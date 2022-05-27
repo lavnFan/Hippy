@@ -49,7 +49,7 @@ For iOS we recommend to use iOS simulator when first try. However, you can chang
 4. Choose a demo to build with `npm run buildexample -- [hippy-react-demo|hippy-vue-demo]` at root directory.
 5. Start the Xcode and build the iOS app with `open examples/ios-demo/HippyDemo.xcodeproj`.
 
-### Build the Android app with js demo
+### Build the Android app with js demofff
 
 For Android, we recommend using the real cellphone for better develop experience, because Hippy is using [X5](https://x5.tencent.com/) JS engine which can't support x86 simulator, as well as ARM simulator has a low performance.
 
