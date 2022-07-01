@@ -20,7 +20,7 @@
  *
  */
 
-#include "inspector/v8_inspector_client_impl.h"
+#include "core/inspector/v8_inspector_client_impl.h"
 
 namespace hippy {
 namespace inspector {
@@ -37,12 +37,12 @@ V8InspectorClientImpl::V8InspectorClientImpl(std::shared_ptr<Scope> scope)
 }
 
 void V8InspectorClientImpl::Reset(std::shared_ptr<Scope> scope,
-                                  std::shared_ptr<JavaRef> bridge) {
+                                  std::shared_ptr<Bridge> bridge) {
   scope_ = std::move(scope);
   channel_->SetBridge(std::move(bridge));
 }
 
-void V8InspectorClientImpl::Connect(const std::shared_ptr<JavaRef>& bridge) {
+void V8InspectorClientImpl::Connect(const std::shared_ptr<Bridge>& bridge) {
   channel_ = std::make_unique<V8ChannelImpl>(bridge);
   session_ = inspector_->connect(1, channel_.get(), v8_inspector::StringView());
 }

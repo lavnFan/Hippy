@@ -92,6 +92,12 @@ elseif ("${JS_ENGINE}" STREQUAL "JSC")
       src/napi/jsc/js_native_turbo_jsc.cc
       src/napi/jsc/native_source_code_ios.cc)
 endif ()
+get_target_property(V8_WITHOUT_INSPECTOR v8 INTERFACE_V8_WITHOUT_INSPECTOR)
+if (NOT V8_WITHOUT_INSPECTOR)
+  list(APPEND SOURCE_SET
+          src/inspector/v8_channel_impl.cc
+          src/inspector/v8_inspector_client_impl.cc)
+endif ()
 set(SOURCE_SET_STANDALONE
     src/modules/console_module.cc
     src/modules/contextify_module.cc

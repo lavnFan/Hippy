@@ -32,6 +32,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "bridge/bridge.h"
 #include "bridge/java2js.h"
 #include "bridge/js2java.h"
 #include "bridge/runtime.h"
@@ -328,7 +329,8 @@ jboolean RunScriptFromUri(JNIEnv* j_env,
   runner->PostTask(task);
 
   std::shared_ptr<ADRLoader> loader = std::make_shared<ADRLoader>();
-  loader->SetBridge(runtime->GetBridge());
+  auto bridge = std::static_pointer_cast<ADRBridge>(runtime->GetBridge());
+  loader->SetBridge(bridge->GetRef());
   loader->SetWorkerTaskRunner(runtime->GetEngine()->GetWorkerTaskRunner());
   runtime->GetScope()->SetUriLoader(loader);
   AAssetManager* aasset_manager = nullptr;
@@ -424,9 +426,9 @@ jlong InitInstance(JNIEnv* j_env,
                      << ", j_is_dev_module = "
                      << static_cast<uint32_t>(j_is_dev_module)
                      << ", j_group_id = " << j_group_id;
+  std::shared_ptr<ADRBridge> bridge = std::make_shared<ADRBridge>(j_env, j_object);
   std::shared_ptr<Runtime> runtime =
-      std::make_shared<Runtime>(std::make_shared<JavaRef>(j_env, j_object),
-                                j_enable_v8_serialization, j_is_dev_module);
+      std::make_shared<Runtime>(std::move(bridge), j_enable_v8_serialization, j_is_dev_module);
   int32_t runtime_id = runtime->GetId();
   Runtime::Insert(runtime);
   int64_t group = j_group_id;
@@ -531,6 +533,20 @@ jlong InitInstance(JNIEnv* j_env,
       engine = std::make_shared<Engine>(std::move(engine_cb_map), param);
       runtime->SetEngine(engine);
       reuse_engine_map[group] = std::make_pair(engine, 1);
+//#ifndef V8_WITHOUT_INSPECTOR
+//      std::shared_ptr<JavaScriptTask> js_task = std::make_shared<JavaScriptTask>();
+//      js_task->callback = [runtime_id]() {
+//        std::shared_ptr<Runtime> runtime = Runtime::Find(runtime_id);
+//        if (runtime->IsDebug()) {
+//          std::lock_guard<std::mutex> lock(inspector_mutex);
+//          auto inspector = std::make_shared<V8InspectorClientImpl>(runtime->GetScope());
+//          inspector->Connect(runtime->GetBridge());
+//          inspector->CreateContext();
+////          runtime->GetEngine()->Set
+//        }
+//      };
+//      runtime->GetEngine()->GetJSRunner()->PostTask(js_task);
+//#endif
     }
   } else if (group != kDefaultEngineId) {
     std::lock_guard<std::mutex> lock(engine_mutex);
