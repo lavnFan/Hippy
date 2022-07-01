@@ -25,8 +25,10 @@
 #include <string>
 
 #include "base/unicode_string_view.h"
-#include "core/core.h"
 #include "v8_channel_impl.h"
+#include "v8_inspector_context.h"
+
+class Scope;
 
 namespace hippy {
 namespace inspector {
@@ -35,14 +37,16 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient {
  public:
   using unicode_string_view = tdf::base::unicode_string_view;
 
-  explicit V8InspectorClientImpl(std::shared_ptr<Scope> scope);
+  V8InspectorClientImpl() = default;
   ~V8InspectorClientImpl() = default;
 
-  void Reset(std::shared_ptr<Scope> scope, std::shared_ptr<Bridge> bridge);
-  void Connect(const std::shared_ptr<Bridge>& bridge);
+  void Connect(std::shared_ptr<Scope> scope, const std::shared_ptr<Bridge>& bridge);
+  inline void SetInspectorContext(std::shared_ptr<V8InspectorContext> inspector_context) { inspector_context_ = inspector_context; }
+  inline std::shared_ptr<V8InspectorContext> GetInspectorContext() { return inspector_context_; }
+  std::shared_ptr<V8InspectorContext> CreateInspectorContext(std::shared_ptr<Scope> scope, const std::shared_ptr<Bridge>& bridge);
 
-  void SendMessageToV8(const unicode_string_view& params);
-  void CreateContext();
+  void SendMessageToV8(const std::shared_ptr<V8InspectorContext>& inspector_context, const unicode_string_view& params);
+  void CreateContext(const std::shared_ptr<V8InspectorContext>& inspector_context);
   void DestroyContext();
   v8::Local<v8::Context> ensureDefaultContextInGroup(
       int contextGroupId) override;
@@ -102,10 +106,14 @@ class V8InspectorClientImpl : public v8_inspector::V8InspectorClient {
   void maxAsyncCallStackDepthChanged(int depth) override {}
 
  private:
+  void CreateInspector(const std::shared_ptr<Scope>& scope);
+
   std::shared_ptr<Scope> scope_;
   std::unique_ptr<v8_inspector::V8Inspector> inspector_;
   std::unique_ptr<V8ChannelImpl> channel_;
   std::unique_ptr<v8_inspector::V8InspectorSession> session_;
+  std::shared_ptr<V8InspectorContext> inspector_context_;
+  int32_t context_group_count = 1;
 };
 
 }  // namespace inspector

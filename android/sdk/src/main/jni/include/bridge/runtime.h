@@ -38,6 +38,7 @@
 class Runtime {
  public:
   using Bridge = hippy::Bridge;
+  using V8InspectorContext = hippy::inspector::V8InspectorContext;
   Runtime(std::shared_ptr<Bridge> bridge, bool enable_v8_serialization, bool is_dev);
 
   inline bool IsEnableV8Serialization() { return enable_v8_serialization_; }
@@ -58,6 +59,10 @@ class Runtime {
   }
   inline void SetEngine(std::shared_ptr<Engine> engine) { engine_ = engine; }
   inline void SetScope(std::shared_ptr<Scope> scope) { scope_ = scope; }
+  inline void SetInspectorContext(std::shared_ptr<V8InspectorContext> inspector_context) {
+    inspector_context_ = inspector_context;
+  }
+  inline std::shared_ptr<V8InspectorContext> GetInspectorContext() { return inspector_context_; }
 
   inline std::shared_ptr<TurboModuleRuntime> GetTurboModuleRuntime() {
     return turbo_module_runtime_;
@@ -84,4 +89,5 @@ class Runtime {
   std::shared_ptr<hippy::napi::CtxValue> bridge_func_;
   int32_t id_;
   std::shared_ptr<TurboModuleRuntime> turbo_module_runtime_;
+  std::shared_ptr<V8InspectorContext> inspector_context_;
 };

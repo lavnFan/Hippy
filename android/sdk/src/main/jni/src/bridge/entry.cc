@@ -68,7 +68,7 @@ REGISTER_JNI("com/tencent/mtt/hippy/bridge/HippyBridgeImpl", // NOLINT(cert-err5
 
 REGISTER_JNI("com/tencent/mtt/hippy/bridge/HippyBridgeImpl", // NOLINT(cert-err58-cpp)
              "destroy",
-             "(JZLcom/tencent/mtt/hippy/bridge/NativeCallback;)V",
+             "(JZZLcom/tencent/mtt/hippy/bridge/NativeCallback;)V",
              DestroyInstance)
 
 REGISTER_JNI("com/tencent/mtt/hippy/bridge/HippyBridgeImpl", // NOLINT(cert-err58-cpp)
@@ -88,7 +88,6 @@ using V8VMInitParam = hippy::napi::V8VMInitParam;
 #ifndef V8_WITHOUT_INSPECTOR
 using V8InspectorClientImpl = hippy::inspector::V8InspectorClientImpl;
 std::mutex inspector_mutex;
-std::shared_ptr<V8InspectorClientImpl> global_inspector = nullptr;
 #endif
 
 constexpr char kLogTag[] = "native";
@@ -466,16 +465,22 @@ jlong InitInstance(JNIEnv* j_env,
       return;
     }
 #ifndef V8_WITHOUT_INSPECTOR
-    if (runtime->IsDebug()) {
-      std::lock_guard<std::mutex> lock(inspector_mutex);
-      if (!global_inspector) {
-        global_inspector = std::make_shared<V8InspectorClientImpl>(scope);
-        global_inspector->Connect(runtime->GetBridge());
-      } else {
-        global_inspector->Reset(scope, runtime->GetBridge());
+      if (runtime->IsDebug()) {
+        std::lock_guard<std::mutex> lock(inspector_mutex);
+        auto inspector = runtime->GetEngine()->GetInspector();
+        if (inspector) {
+          inspector->Connect(scope, runtime->GetBridge());
+          auto inspector_context = inspector->GetInspectorContext();
+          if (inspector_context) {
+            TDF_BASE_DLOG(INFO) << "inspector is reload and reuse context";
+            inspector_context->SetBridge(runtime->GetBridge());
+          } else {
+            inspector_context = inspector->CreateInspectorContext(scope, runtime->GetBridge());
+          }
+          runtime->SetInspectorContext(inspector_context);
+          inspector->CreateContext(inspector_context);
+        }
       }
-      global_inspector->CreateContext();
-    }
 #endif
     std::shared_ptr<Ctx> ctx = scope->GetContext();
     ctx->RegisterGlobalInJs();
@@ -533,22 +538,21 @@ jlong InitInstance(JNIEnv* j_env,
       engine = std::make_shared<Engine>(std::move(engine_cb_map), param);
       runtime->SetEngine(engine);
       reuse_engine_map[group] = std::make_pair(engine, 1);
-//#ifndef V8_WITHOUT_INSPECTOR
-//      std::shared_ptr<JavaScriptTask> js_task = std::make_shared<JavaScriptTask>();
-//      js_task->callback = [runtime_id]() {
-//        std::shared_ptr<Runtime> runtime = Runtime::Find(runtime_id);
-//        if (runtime->IsDebug()) {
-//          std::lock_guard<std::mutex> lock(inspector_mutex);
-//          auto inspector = std::make_shared<V8InspectorClientImpl>(runtime->GetScope());
-//          inspector->Connect(runtime->GetBridge());
-//          inspector->CreateContext();
-////          runtime->GetEngine()->Set
-//        }
-//      };
-//      runtime->GetEngine()->GetJSRunner()->PostTask(js_task);
-//#endif
+#ifndef V8_WITHOUT_INSPECTOR
+      std::shared_ptr<JavaScriptTask> js_task = std::make_shared<JavaScriptTask>();
+      js_task->callback = [runtime_id]() {
+        std::shared_ptr<Runtime> runtime = Runtime::Find(runtime_id);
+        if (runtime->IsDebug()) {
+          std::lock_guard<std::mutex> lock(inspector_mutex);
+          auto inspector = std::make_shared<V8InspectorClientImpl>();
+          runtime->GetEngine()->SetInspector(inspector);
+        }
+      };
+      runtime->GetEngine()->GetJSRunner()->PostTask(js_task);
+#endif
     }
-  } else if (group != kDefaultEngineId) {
+  } else
+    if (group != kDefaultEngineId) {
     std::lock_guard<std::mutex> lock(engine_mutex);
     auto it = reuse_engine_map.find(group);
     if (it != reuse_engine_map.end()) {
@@ -582,6 +586,7 @@ void DestroyInstance(__unused JNIEnv* j_env,
                      __unused jobject j_object,
                      jlong j_runtime_id,
                      __unused jboolean j_single_thread_mode,
+                     jboolean j_is_reload,
                      jobject j_callback) {
   TDF_BASE_DLOG(INFO) << "DestroyInstance begin, j_runtime_id = "
                       << j_runtime_id;
@@ -594,13 +599,18 @@ void DestroyInstance(__unused JNIEnv* j_env,
 
   std::shared_ptr<JavaScriptTask> task = std::make_shared<JavaScriptTask>();
   std::shared_ptr<JavaRef> cb = std::make_shared<JavaRef>(j_env, j_callback);
-  task->callback = [runtime, runtime_id, cb] {
+  auto is_reload = static_cast<bool>(j_is_reload);
+  task->callback = [runtime, runtime_id, cb, is_reload] {
     TDF_BASE_LOG(INFO) << "js destroy begin, runtime_id " << runtime_id;
 #ifndef V8_WITHOUT_INSPECTOR
     if (runtime->IsDebug()) {
-      std::lock_guard<std::mutex> lock(inspector_mutex);
-      global_inspector->DestroyContext();
-      global_inspector->Reset(nullptr, runtime->GetBridge());
+        std::lock_guard<std::mutex> lock(inspector_mutex);
+        auto inspector = runtime->GetEngine()->GetInspector();
+        if (inspector) {
+          inspector->DestroyContext();
+          // preserve inspector_context for reload reuse
+          inspector->SetInspectorContext(is_reload ? runtime->GetInspectorContext() : nullptr);
+        }
     } else {
       runtime->GetScope()->WillExit();
     }
