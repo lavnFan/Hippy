@@ -16,9 +16,9 @@ module.exports = {
   devServer: {
     // remote debug server address
     remote: {
-      protocol: 'http',
-      host: '127.0.0.1',
-      port: 38989,
+      protocol: 'https',
+      host: 'devtools.qq.com',
+      port: 443,
     },
     // support inspect react components, store and router, by default is disabled
     reactDevtools: false,

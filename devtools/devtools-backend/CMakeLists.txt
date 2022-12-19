@@ -74,6 +74,18 @@ target_compile_definitions(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE ${asio_SOURCE_DIR}/asio/include)
 # endregion
 
+# region openssl
+set(OPENSSL_PATH ${PROJECT_ROOT_DIR}/devtools/devtools-backend/third_party/openssl/include)
+target_include_directories(${PROJECT_NAME} PRIVATE ${OPENSSL_PATH})
+message(${OPENSSL_PATH})
+add_library(ssl STATIC IMPORTED)
+add_library(crypto STATIC IMPORTED)
+set_target_properties(ssl PROPERTIES IMPORTED_LOCATION ${PROJECT_ROOT_DIR}/devtools/devtools-backend/third_party/openssl/arm64-v8a/lib/libssl.a)
+set_target_properties(crypto PROPERTIES IMPORTED_LOCATION ${PROJECT_ROOT_DIR}/devtools/devtools-backend/third_party/openssl/arm64-v8a/lib/libcrypto.a)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ssl crypto)
+# endregion
+
 # region websocketpp
 InfraPackage_Add(websocketpp
     REMOTE "devtools/backend/third_party/websocketpp/develop/git-repo.tgz"
@@ -153,6 +165,8 @@ set(SOURCE_SET
     src/tunnel/tcp/tcp_channel.cc
     src/tunnel/tunnel_service.cc
     src/tunnel/ws/web_socket_channel.cc
+    src/tunnel/ws/web_socket_no_tls_client.cc
+    src/tunnel/ws/web_socket_tls_client.cc
     src/tunnel/tcp/socket.cc)
 target_sources(${PROJECT_NAME} PRIVATE ${SOURCE_SET})
 # endregion

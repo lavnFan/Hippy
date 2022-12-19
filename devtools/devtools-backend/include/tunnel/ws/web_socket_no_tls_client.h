@@ -19,35 +19,30 @@
  */
 #pragma once
 
-#include <string>
-#include <vector>
-
-#include "footstone/logging.h"
-#include "tunnel/net_channel.h"
 #include "tunnel/ws/web_socket_base_client.h"
 
 namespace hippy::devtools {
+using WSClient = websocketpp::client<websocketpp::config::asio_client>;
 /**
- * @brief web socket channel to implement net
+ * @brief websocket client without tls
  */
-class WebSocketChannel : public hippy::devtools::NetChannel, public std::enable_shared_from_this<WebSocketChannel> {
+class WebSocketNoTlsClient : public WebSocketBaseClient, public std::enable_shared_from_this<WebSocketNoTlsClient> {
  public:
-  explicit WebSocketChannel(const std::string& ws_uri);
-  void Connect(ReceiveDataHandler handler) override;
+  WebSocketNoTlsClient();
+  void SetNeedsHandler() override;
+  void Connect(const std::string& ws_uri) override;
   void Send(const std::string& rsp_data) override;
   void Close(int32_t code, const std::string& reason) override;
 
  private:
-  void SetNeedsHandlers();
-  void HandleConnectFail();
-  void HandleConnectOpen();
-  void HandleReceiveMessage(const std::string& message);
-  void HandleClose();
+  void HandleSocketInit(const websocketpp::connection_hdl& handle);
+  void HandleSocketConnectFail(const websocketpp::connection_hdl& handle);
+  void HandleSocketConnectOpen(const websocketpp::connection_hdl& handle);
+  void HandleSocketConnectMessage(const websocketpp::connection_hdl& handle, const WSMessagePtr& message_ptr);
+  void HandleSocketConnectClose(const websocketpp::connection_hdl& handle);
 
-  std::shared_ptr<WebSocketBaseClient> ws_client_;
-  std::string ws_uri_;
-  ReceiveDataHandler data_handler_;
-  std::vector<std::string> unset_messages_{};
-  bool need_tls_ = false;
+  WSClient ws_client_;
+  WSThread ws_thread_;
+  websocketpp::connection_hdl connection_hdl_;
 };
 }  // namespace hippy::devtools

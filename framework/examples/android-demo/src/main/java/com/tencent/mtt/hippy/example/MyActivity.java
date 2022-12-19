@@ -58,7 +58,8 @@ public class MyActivity extends Activity
 			initParams.context = this;
 			initParams.debugServerHost = "localhost:38989";
 			// 可选：是否设置为debug模式，默认为false。调试模式下，所有jsbundle都是从debug server上下载
-			initParams.debugMode = false;
+			initParams.debugMode = true;
+			initParams.remoteServerUrl = "https://devtools.qq.com:443/4b696c72f7f4051539d8ed202c8d97ea/index.bundle?debugUrl=wss%3A%2F%2Fdevtools.qq.com%3A443%2Fdebugger-proxy";
 			// 可选：是否打印引擎的完整的log。默认为false
 			
 			initParams.enableLog = true;
