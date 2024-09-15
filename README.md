@@ -65,7 +65,7 @@ For iOS, we recommend to use iOS simulator when first try. However, you can chan
 >
 > More details for [iOS SDK integration](https://hippyjs.org/#/ios/integration?id=ios-%e9%9b%86%e6%88%90).
 
-### Build the Android app with js demo
+### Build the Android app with js demofff
 
 For Android, we recommend using the real cellphone for better develop experience, because Hippy is using [X5](https://x5.tencent.com/) JS engine which can't support x86 simulator, as well as ARM simulator has a low performance.
 
